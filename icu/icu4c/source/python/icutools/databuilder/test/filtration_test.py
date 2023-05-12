@@ -413,7 +413,7 @@ class FiltrationTest(unittest.TestCase):
 
     def _check_filter(self, filter, expected_matches, tree="locales"):
         for file_stem in EXAMPLE_FILE_STEMS:
-            is_match = filter.match(InFile("%s/%s.txt" % (tree, file_stem)))
+            is_match = filter.match(InFile(f"{tree}/{file_stem}.txt"))
             expected_match = file_stem in expected_matches
             self.assertEqual(is_match, expected_match, file_stem)
 

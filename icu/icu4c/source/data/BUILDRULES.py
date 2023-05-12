@@ -155,7 +155,7 @@ def generate_confusables(config, io, common_vars):
 def generate_conversion_mappings(config, io, common_vars):
     # UConv Conversion Table Files
     input_files = [InFile(filename) for filename in io.glob("mappings/*.ucm")]
-    output_files = [OutFile("%s.cnv" % v.filename[9:-4]) for v in input_files]
+    output_files = [OutFile(f"{v.filename[9:-4]}.cnv") for v in input_files]
     # TODO: handle BUILD_SPECIAL_CNV_FILES? Means to add --ignore-siso-check flag to makeconv
     return [
         RepeatedOrSingleExecutionRequest(
@@ -177,7 +177,9 @@ def generate_conversion_mappings(config, io, common_vars):
 def generate_brkitr_brk(config, io, common_vars):
     # BRK Files
     input_files = [InFile(filename) for filename in io.glob("brkitr/rules/*.txt")]
-    output_files = [OutFile("brkitr/%s.brk" % v.filename[13:-4]) for v in input_files]
+    output_files = [
+        OutFile(f"brkitr/{v.filename[13:-4]}.brk") for v in input_files
+    ]
     return [
         RepeatedExecutionRequest(
             name = "brkitr_brk",
@@ -200,7 +202,7 @@ def generate_brkitr_brk(config, io, common_vars):
 def generate_stringprep(config, io, common_vars):
     # SPP FILES
     input_files = [InFile(filename) for filename in io.glob("sprep/*.txt")]
-    output_files = [OutFile("%s.spp" % v.filename[6:-4]) for v in input_files]
+    output_files = [OutFile(f"{v.filename[6:-4]}.spp") for v in input_files]
     bundle_names = [v.filename[6:-4] for v in input_files]
     return [
         RepeatedExecutionRequest(
@@ -223,7 +225,9 @@ def generate_stringprep(config, io, common_vars):
 def generate_brkitr_dictionaries(config, io, common_vars):
     # Dict Files
     input_files = [InFile(filename) for filename in io.glob("brkitr/dictionaries/*.txt")]
-    output_files = [OutFile("brkitr/%s.dict" % v.filename[20:-4]) for v in input_files]
+    output_files = [
+        OutFile(f"brkitr/{v.filename[20:-4]}.dict") for v in input_files
+    ]
     extra_options_map = {
         "brkitr/dictionaries/burmesedict.txt": "--bytes --transform offset-0x1000",
         "brkitr/dictionaries/cjdict.txt": "--uchars",
@@ -274,7 +278,7 @@ def generate_normalization(config, io, common_vars):
 
 def generate_coll_ucadata(config, io, common_vars):
     # Collation Dependency File (ucadata.icu)
-    input_file = InFile("in/coll/ucadata-%s.icu" % config.coll_han_type)
+    input_file = InFile(f"in/coll/ucadata-{config.coll_han_type}.icu")
     output_file = OutFile("coll/ucadata.icu")
     return [
         SingleExecutionRequest(
@@ -306,7 +310,7 @@ def generate_full_unicore_data(config, io, common_vars):
         "ubidi.icu",
         "nfc.nrm"
     ]
-    input_files = [InFile("in/%s" % bn) for bn in basenames]
+    input_files = [InFile(f"in/{bn}") for bn in basenames]
     output_files = [OutFile(bn) for bn in basenames]
     return [
         RepeatedExecutionRequest(
@@ -341,8 +345,8 @@ def generate_unames(config, io, common_vars):
 def generate_ulayout(config, io, common_vars):
     # Unicode text layout properties
     basename = "ulayout"
-    input_file = InFile("in/%s.icu" % basename)
-    output_file = OutFile("%s.icu" % basename)
+    input_file = InFile(f"in/{basename}.icu")
+    output_file = OutFile(f"{basename}.icu")
     return [
         SingleExecutionRequest(
             name = basename,
@@ -360,8 +364,8 @@ def generate_ulayout(config, io, common_vars):
 def generate_uemoji(config, io, common_vars):
     # Unicode emoji properties
     basename = "uemoji"
-    input_file = InFile("in/%s.icu" % basename)
-    output_file = OutFile("%s.icu" % basename)
+    input_file = InFile(f"in/{basename}.icu")
+    output_file = OutFile(f"{basename}.icu")
     return [
         SingleExecutionRequest(
             name = basename,
@@ -380,7 +384,7 @@ def generate_misc(config, io, common_vars):
     # Misc Data Res Files
     input_files = [InFile(filename) for filename in io.glob("misc/*.txt")]
     input_basenames = [v.filename[5:] for v in input_files]
-    output_files = [OutFile("%s.res" % v[:-4]) for v in input_basenames]
+    output_files = [OutFile(f"{v[:-4]}.res") for v in input_basenames]
     return [
         RepeatedExecutionRequest(
             name = "misc_res",
@@ -452,14 +456,11 @@ def generate_translit(config, io, common_vars):
         InFile("translit/en.txt"),
         InFile("translit/el.txt")
     ]
-    dep_files = set(InFile(filename) for filename in io.glob("translit/*.txt"))
+    dep_files = {InFile(filename) for filename in io.glob("translit/*.txt")}
     dep_files -= set(input_files)
     dep_files = list(sorted(dep_files))
     input_basenames = [v.filename[9:] for v in input_files]
-    output_files = [
-        OutFile("translit/%s.res" % v[:-4])
-        for v in input_basenames
-    ]
+    output_files = [OutFile(f"translit/{v[:-4]}.res") for v in input_basenames]
     return [
         RepeatedOrSingleExecutionRequest(
             name = "translit_res",
@@ -483,10 +484,7 @@ def generate_translit(config, io, common_vars):
 def generate_brkitr_lstm(config, io, common_vars):
     input_files = [InFile(filename) for filename in io.glob("brkitr/lstm/*.txt")]
     input_basenames = [v.filename[12:] for v in input_files]
-    output_files = [
-        OutFile("brkitr/%s.res" % v[:-4])
-        for v in input_basenames
-    ]
+    output_files = [OutFile(f"brkitr/{v[:-4]}.res") for v in input_basenames]
     return [
         RepeatedOrSingleExecutionRequest(
             name = "lstm_res",
@@ -515,23 +513,20 @@ def generate_tree(
         use_pool_bundle,
         dep_targets):
     requests = []
-    category = "%s_tree" % sub_dir
-    out_prefix = "%s/" % out_sub_dir if out_sub_dir else ""
-    input_files = [InFile(filename) for filename in io.glob("%s/*.txt" % sub_dir)]
+    category = f"{sub_dir}_tree"
+    out_prefix = f"{out_sub_dir}/" if out_sub_dir else ""
+    input_files = [InFile(filename) for filename in io.glob(f"{sub_dir}/*.txt")]
     if sub_dir == "curr":
         input_files.remove(InFile("curr/supplementalData.txt"))
     if sub_dir == "zone":
         input_files.remove(InFile("zone/tzdbNames.txt"))
     input_basenames = [v.filename[len(sub_dir)+1:] for v in input_files]
-    output_files = [
-        OutFile("%s%s.res" % (out_prefix, v[:-4]))
-        for v in input_basenames
-    ]
+    output_files = [OutFile(f"{out_prefix}{v[:-4]}.res") for v in input_basenames]
 
     # Generate Pool Bundle
     if use_pool_bundle:
-        input_pool_files = [OutFile("%spool.res" % out_prefix)]
-        pool_target_name = "%s_pool_write" % sub_dir
+        input_pool_files = [OutFile(f"{out_prefix}pool.res")]
+        pool_target_name = f"{sub_dir}_pool_write"
         use_pool_bundle_option = "--usePoolBundle {OUT_DIR}/{OUT_PREFIX}".format(
             OUT_PREFIX = out_prefix,
             **common_vars
@@ -561,23 +556,23 @@ def generate_tree(
     # Generate Res File Tree
     requests += [
         RepeatedOrSingleExecutionRequest(
-            name = "%s_res" % sub_dir,
-            category = category,
-            dep_targets = dep_targets,
-            input_files = input_files,
-            output_files = output_files,
-            tool = IcuTool("genrb"),
-            args = "-s {IN_DIR}/{IN_SUB_DIR} -d {OUT_DIR}/{OUT_PREFIX} -i {OUT_DIR} "
-                "{EXTRA_OPTION} -k "
-                "{INPUT_BASENAME}",
-            format_with = {
+            name=f"{sub_dir}_res",
+            category=category,
+            dep_targets=dep_targets,
+            input_files=input_files,
+            output_files=output_files,
+            tool=IcuTool("genrb"),
+            args="-s {IN_DIR}/{IN_SUB_DIR} -d {OUT_DIR}/{OUT_PREFIX} -i {OUT_DIR} "
+            "{EXTRA_OPTION} -k "
+            "{INPUT_BASENAME}",
+            format_with={
                 "IN_SUB_DIR": sub_dir,
                 "OUT_PREFIX": out_prefix,
-                "EXTRA_OPTION": use_pool_bundle_option
+                "EXTRA_OPTION": use_pool_bundle_option,
             },
-            repeat_with = {
+            repeat_with={
                 "INPUT_BASENAME": utils.SpaceSeparatedList(input_basenames)
-            }
+            },
         )
     ]
 
@@ -585,7 +580,7 @@ def generate_tree(
     # Exclude the deprecated locale variants and root; see ICU-20628. This
     # could be data-driven, but we do not want to perform I/O in this script
     # (for example, we do not want to read from an XML file).
-    excluded_locales = set([
+    excluded_locales = {
         "ja_JP_TRADITIONAL",
         "th_TH_TRADITIONAL",
         "de_",
@@ -593,7 +588,7 @@ def generate_tree(
         "es_",
         "es__TRADITIONAL",
         "root",
-    ])
+    }
     # Put alias locales in a separate structure; see ICU-20627
     dependency_data = io.read_locale_deps(sub_dir)
     if "aliases" in dependency_data:
@@ -617,7 +612,7 @@ def generate_tree(
         OUT_PREFIX = out_prefix,
         **common_vars
     ))
-    index_file_target_name = "%s_index_txt" % sub_dir
+    index_file_target_name = f"{sub_dir}_index_txt"
     requests += [
         IndexRequest(
             name = index_file_target_name,

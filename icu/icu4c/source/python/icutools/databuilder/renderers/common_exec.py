@@ -47,7 +47,7 @@ def run_helper(request, common_vars, platform, tool_dir, verbose, tool_cfg=None,
             FILENAME = request.output_file.filename,
         )
         if verbose:
-            print("Printing to file: %s" % output_path)
+            print(f"Printing to file: {output_path}")
         with open(output_path, "w") as f:
             f.write(request.content)
         return 0
@@ -61,7 +61,7 @@ def run_helper(request, common_vars, platform, tool_dir, verbose, tool_cfg=None,
             FILENAME = request.output_file.filename,
         )
         if verbose:
-            print("Copying file to: %s" % output_path)
+            print(f"Copying file to: {output_path}")
         shutil.copyfile(input_path, output_path)
         return 0
     if isinstance(request, VariableRequest):
@@ -89,7 +89,7 @@ def run_helper(request, common_vars, platform, tool_dir, verbose, tool_cfg=None,
             **common_vars
         )
     else:
-        raise ValueError("Unknown platform: %s" % platform)
+        raise ValueError(f"Unknown platform: {platform}")
 
     if isinstance(request, RepeatedExecutionRequest):
         for loop_vars in utils.repeated_execution_request_looper(request):
@@ -128,13 +128,13 @@ def run_shell_command(command_line, platform, verbose):
         previous_comspec = os.environ["COMSPEC"]
         # Add 7 to the length for the argument /c with quotes.
         # For example:  C:\WINDOWS\system32\cmd.exe /c "<command_line>"
-        if ((len(previous_comspec) + len(command_line) + 7) > 8190):
+        if len(previous_comspec) + len(command_line) > 8183:
             if verbose:
                 print("Command length exceeds the max length for CMD on Windows, using PowerShell instead.")
             os.environ["COMSPEC"] = 'powershell'
             changed_windows_comspec = True
     if verbose:
-        print("Running: %s" % command_line)
+        print(f"Running: {command_line}")
         returncode = subprocess.call(
             command_line,
             shell = True
@@ -151,5 +151,5 @@ def run_shell_command(command_line, platform, verbose):
     if changed_windows_comspec:
         os.environ["COMSPEC"] = previous_comspec
     if returncode != 0:
-        print("Command failed: %s" % command_line, file=sys.stderr)
+        print(f"Command failed: {command_line}", file=sys.stderr)
     return returncode

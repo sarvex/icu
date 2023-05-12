@@ -53,49 +53,44 @@ def generate_rb(config, io, common_vars):
         # "windowsZones",
     ]
     return [
-        # Inference rule for creating resource bundles
-        # Some test data resource bundles are known to have warnings and bad data.
-        # The -q option is there on purpose, so we don't see it normally.
-        # TODO: Use option -k?
         RepeatedExecutionRequest(
-            name = "testrb",
-            category = "tests",
-            input_files = [InFile("%s.txt" % bn) for bn in basenames],
-            output_files = [OutFile("%s.res" % bn) for bn in basenames],
-            tool = IcuTool("genrb"),
-            args = "-q -s {IN_DIR} -d {OUT_DIR} {INPUT_FILE}",
-            format_with = {},
-            repeat_with = {}
-        ),
-        # Other standalone res files
-        SingleExecutionRequest(
-            name = "encoded",
-            category = "tests",
-            input_files = [InFile("encoded.utf16be")],
-            output_files = [OutFile("encoded.res")],
-            tool = IcuTool("genrb"),
-            args = "-s {IN_DIR} -eUTF-16BE -d {OUT_DIR} {INPUT_FILES[0]}",
-            format_with = {}
+            name="testrb",
+            category="tests",
+            input_files=[InFile(f"{bn}.txt") for bn in basenames],
+            output_files=[OutFile(f"{bn}.res") for bn in basenames],
+            tool=IcuTool("genrb"),
+            args="-q -s {IN_DIR} -d {OUT_DIR} {INPUT_FILE}",
+            format_with={},
+            repeat_with={},
         ),
         SingleExecutionRequest(
-            name = "zoneinfo64",
-            category = "tests",
-            input_files = [InFile("zoneinfo64.txt")],
-            output_files = [TmpFile("zoneinfo64.res")],
-            tool = IcuTool("genrb"),
-            args = "-s {IN_DIR} -d {TMP_DIR} {INPUT_FILES[0]}",
-            format_with = {}
+            name="encoded",
+            category="tests",
+            input_files=[InFile("encoded.utf16be")],
+            output_files=[OutFile("encoded.res")],
+            tool=IcuTool("genrb"),
+            args="-s {IN_DIR} -eUTF-16BE -d {OUT_DIR} {INPUT_FILES[0]}",
+            format_with={},
         ),
         SingleExecutionRequest(
-            name = "filtertest",
-            category = "tests",
-            input_files = [InFile("filtertest.txt")],
-            output_files = [OutFile("filtertest.res")],
-            tool = IcuTool("genrb"),
-            args = "-s {IN_DIR} -d {OUT_DIR} -i {OUT_DIR} "
-                "--filterDir {IN_DIR}/filters filtertest.txt",
-            format_with = {}
-        )
+            name="zoneinfo64",
+            category="tests",
+            input_files=[InFile("zoneinfo64.txt")],
+            output_files=[TmpFile("zoneinfo64.res")],
+            tool=IcuTool("genrb"),
+            args="-s {IN_DIR} -d {TMP_DIR} {INPUT_FILES[0]}",
+            format_with={},
+        ),
+        SingleExecutionRequest(
+            name="filtertest",
+            category="tests",
+            input_files=[InFile("filtertest.txt")],
+            output_files=[OutFile("filtertest.res")],
+            tool=IcuTool("genrb"),
+            args="-s {IN_DIR} -d {OUT_DIR} -i {OUT_DIR} "
+            "--filterDir {IN_DIR}/filters filtertest.txt",
+            format_with={},
+        ),
     ]
 
 
@@ -162,14 +157,14 @@ def generate_conv(config, io, common_vars):
     ]
     return [
         RepeatedExecutionRequest(
-            name = "test_conv",
-            category = "tests",
-            input_files = [InFile("%s.ucm" % bn) for bn in basenames],
-            output_files = [OutFile("%s.cnv" % bn) for bn in basenames],
-            tool = IcuTool("makeconv"),
-            args = "--small -d {OUT_DIR} {IN_DIR}/{INPUT_FILE}",
-            format_with = {},
-            repeat_with = {}
+            name="test_conv",
+            category="tests",
+            input_files=[InFile(f"{bn}.ucm") for bn in basenames],
+            output_files=[OutFile(f"{bn}.cnv") for bn in basenames],
+            tool=IcuTool("makeconv"),
+            args="--small -d {OUT_DIR} {IN_DIR}/{INPUT_FILE}",
+            format_with={},
+            repeat_with={},
         )
     ]
 

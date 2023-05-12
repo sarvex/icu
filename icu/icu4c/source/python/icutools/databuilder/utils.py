@@ -45,9 +45,11 @@ def get_local_dirname(dirname):
         if variable in LOCAL_DIRNAME_SUBSTITUTIONS:
             return LOCAL_DIRNAME_SUBSTITUTIONS[variable] + dirname[sep_idx:]
     print(
-        "Error: Local directory must be absolute, or relative to one of: " +
-        (", ".join("$%s" % v for v in LOCAL_DIRNAME_SUBSTITUTIONS.keys())),
-        file=sys.stderr
+        (
+            "Error: Local directory must be absolute, or relative to one of: "
+            + ", ".join(f"${v}" for v in LOCAL_DIRNAME_SUBSTITUTIONS.keys())
+        ),
+        file=sys.stderr,
     )
     exit(1)
 
@@ -69,7 +71,7 @@ def concat_dicts(*dicts):
     # There is not a super great way to do this in Python:
     new_dict = {}
     for dict in dicts:
-        new_dict.update(dict)
+        new_dict |= dict
     return new_dict
 
 
@@ -126,13 +128,13 @@ def get_all_output_files(requests, include_tmp=False):
 
     # Filter for unique values.  NOTE: Cannot use set() because we need to accept same filename as
     # OutFile and TmpFile as different, and by default they evaluate as equal.
-    return [f for _, f in set((type(f), f) for f in files)]
+    return [f for _, f in {(type(f), f) for f in files}]
 
 
 def compute_directories(requests):
     dirs = set()
     for file in get_all_output_files(requests, include_tmp=True):
-        path = "%s/%s" % (dir_for(file), file.filename)
+        path = f"{dir_for(file)}/{file.filename}"
         dirs.add(path[:path.rfind("/")])
     return list(sorted(dirs))
 

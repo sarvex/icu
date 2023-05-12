@@ -137,27 +137,19 @@ class Config(object):
         if args.filter_file:
             try:
                 with open(args.filter_file, "r") as f:
-                    print("Note: Applying filters from %s." % args.filter_file, file=sys.stderr)
+                    print(f"Note: Applying filters from {args.filter_file}.", file=sys.stderr)
                     self._parse_filter_file(f)
             except IOError:
-                print("Error: Could not read filter file %s." % args.filter_file, file=sys.stderr)
+                print(
+                    f"Error: Could not read filter file {args.filter_file}.",
+                    file=sys.stderr,
+                )
                 exit(1)
             self.filter_dir = os.path.abspath(os.path.dirname(args.filter_file))
 
-        # Either "unihan" or "implicithan"
-        self.coll_han_type = "unihan"
-        if "collationUCAData" in self.filters_json_data:
-            self.coll_han_type = self.filters_json_data["collationUCAData"]
-
-        # Either "additive" or "subtractive"
-        self.strategy = "subtractive"
-        if "strategy" in self.filters_json_data:
-            self.strategy = self.filters_json_data["strategy"]
-
-        # True or False (could be extended later to support enum/list)
-        self.use_pool_bundle = True
-        if "usePoolBundle" in self.filters_json_data:
-            self.use_pool_bundle = self.filters_json_data["usePoolBundle"]
+        self.coll_han_type = self.filters_json_data.get("collationUCAData", "unihan")
+        self.strategy = self.filters_json_data.get("strategy", "subtractive")
+        self.use_pool_bundle = self.filters_json_data.get("usePoolBundle", True)
 
     def _parse_filter_file(self, f):
         # Use the Hjson parser if it is available; otherwise, use vanilla JSON.
@@ -177,15 +169,18 @@ class Config(object):
                 schema = json.load(CommentStripper(schema_f))
             validator = jsonschema.Draft4Validator(schema)
             for error in validator.iter_errors(self.filters_json_data, schema):
-                print("WARNING: ICU data filter JSON file:", error.message,
-                    "at", "".join(
-                        "[%d]" % part if isinstance(part, int) else ".%s" % part
+                print(
+                    "WARNING: ICU data filter JSON file:",
+                    error.message,
+                    "at",
+                    "".join(
+                        "[%d]" % part if isinstance(part, int) else f".{part}"
                         for part in error.absolute_path
                     ),
-                    file=sys.stderr)
+                    file=sys.stderr,
+                )
         except ImportError:
             print("Tip: to validate your filter file, install the Pip package 'jsonschema'", file=sys.stderr)
-            pass
 
 
 def add_copy_input_requests(requests, config, common_vars):
@@ -254,7 +249,7 @@ class IO(object):
         return [v.replace("\\", "/") for v in relative_paths]
 
     def read_locale_deps(self, tree):
-        return self._read_json("%s/LOCALE_DEPS.json" % tree)
+        return self._read_json(f"{tree}/LOCALE_DEPS.json")
 
     def _read_json(self, filename):
         with pyio.open(os.path.join(self.src_dir, filename), "r", encoding="utf-8-sig") as f:
@@ -273,7 +268,7 @@ def main(argv):
         }
         makefile_env = ["ICUDATA_CHAR", "OUT_DIR", "TMP_DIR"]
         common = {
-            key: "$(%s)" % key
+            key: f"$({key})"
             for key in list(makefile_vars.keys()) + makefile_env
         }
         common["FILTERS_DIR"] = config.filter_dir
@@ -352,7 +347,7 @@ def main(argv):
             verbose = args.verbose,
         )
     else:
-        print("Mode not supported: %s" % args.mode)
+        print(f"Mode not supported: {args.mode}")
         return 1
     return 0
 

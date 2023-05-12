@@ -48,18 +48,16 @@ _weak_destructors = set()
 def iteritems(items):
   """Python 2/3-compatible iteritems"""
   try:
-    for v in items.iteritems():
-      yield v
+    yield from items.iteritems()
   except AttributeError:
-    for v in items.items():
-      yield v
+    yield from items.items()
 
 def _ReadObjFile(root_path, library_name, obj_name):
   global _ignored_symbols, _obj_files, _symbols_to_files
   global _virtual_classes, _weak_destructors
-  lib_obj_name = library_name + "/" + obj_name
+  lib_obj_name = f"{library_name}/{obj_name}"
   if lib_obj_name in _obj_files:
-    print("Warning: duplicate .o file " + lib_obj_name)
+    print(f"Warning: duplicate .o file {lib_obj_name}")
     _return_value = 2
     return
 
@@ -119,8 +117,9 @@ def _Resolve(name, parents):
   item = dependencies.items[name]
   item_type = item["type"]
   if name in parents:
-    sys.exit("Error: %s %s has a circular dependency on itself: %s" %
-             (item_type, name, parents))
+    sys.exit(
+        f"Error: {item_type} {name} has a circular dependency on itself: {parents}"
+    )
   # Check if already cached.
   exports = item.get("exports")
   if exports != None: return item
@@ -129,7 +128,7 @@ def _Resolve(name, parents):
   imports = set()
   exports = set()
   system_symbols = item.get("system_symbols")
-  if system_symbols == None: system_symbols = item["system_symbols"] = set()
+  if system_symbols is None: system_symbols = item["system_symbols"] = set()
   files = item.get("files")
   if files:
     for file_name in files:
@@ -137,8 +136,7 @@ def _Resolve(name, parents):
       imports |= obj_file["imports"]
       exports |= obj_file["exports"]
   imports -= exports | _ignored_symbols
-  deps = item.get("deps")
-  if deps:
+  if deps := item.get("deps"):
     for dep in deps:
       dep_item = _Resolve(dep, parents)
       # Detect whether this item needs to depend on dep,
@@ -163,7 +161,7 @@ def _Resolve(name, parents):
       if symbol in _obj_files[file_name]["imports"]:
         neededFile = _symbols_to_files.get(symbol)
         if neededFile in dependencies.file_to_item:
-          neededItem = "but %s does not depend on %s (for %s)" % (name, dependencies.file_to_item[neededFile], neededFile)
+          neededItem = f"but {name} does not depend on {dependencies.file_to_item[neededFile]} (for {neededFile})"
         else:
           neededItem = "- is this a new system symbol?"
         sys.stderr.write("Error: in %s %s: %s imports %s %s\n" %
@@ -183,8 +181,7 @@ def Process(root_path):
   for name_and_item in iteritems(dependencies.items):
     name = name_and_item[0]
     item = name_and_item[1]
-    system_symbols = item.get("system_symbols")
-    if system_symbols:
+    if system_symbols := item.get("system_symbols"):
       for symbol in system_symbols:
         _symbols_to_files[symbol] = name
   for library_name in dependencies.libraries:
@@ -204,8 +201,8 @@ def Process(root_path):
     for library_name in dependencies.libraries:
       _Resolve(library_name, [])
   if not _return_value:
-    virtual_classes_with_weak_destructors = _virtual_classes & _weak_destructors
-    if virtual_classes_with_weak_destructors:
+    if (virtual_classes_with_weak_destructors := _virtual_classes
+        & _weak_destructors):
       sys.stderr.write("Error: Some classes have virtual methods, and "
                        "an implicit or inline destructor "
                        "(see ICU ticket #8454 for details):\n%s\n" %

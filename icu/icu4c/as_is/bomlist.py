@@ -32,11 +32,10 @@ for ent in tree:
         continue
     for file in files:
         tfiles=tfiles+1
-        fp = (path + "/" + file)
+        fp = f"{path}/{file}"
         if not os.path.isfile(fp):
             continue
-        f = open(fp, 'rb')
-        bytes=f.read(3)
-        if bytes and (bytes == bom):
-            print('icu/'+fp[2::])
-        f.close()
+        with open(fp, 'rb') as f:
+            bytes=f.read(3)
+            if bytes and (bytes == bom):
+                print(f'icu/{fp[2:]}')

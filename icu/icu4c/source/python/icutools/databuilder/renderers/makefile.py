@@ -11,17 +11,15 @@ from .. import utils
 from ..request_types import *
 
 def get_gnumake_rules(build_dirs, requests, makefile_vars, **kwargs):
-    makefile_string = ""
-
     # Common Variables
     common_vars = kwargs["common_vars"]
-    for key, value in sorted(makefile_vars.items()):
-        makefile_string += "{KEY} = {VALUE}\n".format(
-            KEY = key,
-            VALUE = value
+    makefile_string = (
+        "".join(
+            "{KEY} = {VALUE}\n".format(KEY=key, VALUE=value)
+            for key, value in sorted(makefile_vars.items())
         )
-    makefile_string += "\n"
-
+        + "\n"
+    )
     # Directories
     dirs_timestamp_file = "{TMP_DIR}/dirs.timestamp".format(**common_vars)
     makefile_string += "DIRS = {TIMESTAMP_FILE}\n\n".format(
@@ -77,16 +75,16 @@ def files_to_makefile(files, common_vars, wrap = False, **kwargs):
     dirnames = [utils.dir_for(file).format(**common_vars) for file in files]
     join_str = " \\\n\t\t" if wrap and len(files) > 2 else " "
     if len(files) == 1:
-        return "%s/%s" % (dirnames[0], files[0].filename)
+        return f"{dirnames[0]}/{files[0].filename}"
     elif len(set(dirnames)) == 1:
-        return "$(addprefix %s/,%s)" % (dirnames[0], join_str.join(file.filename for file in files))
+        return f"$(addprefix {dirnames[0]}/,{join_str.join(file.filename for file in files)})"
     else:
-        return join_str.join("%s/%s" % (d, f.filename) for d,f in zip(dirnames, files))
+        return join_str.join(f"{d}/{f.filename}" for d,f in zip(dirnames, files))
 
 def get_gnumake_rules_helper(request, common_vars, **kwargs):
 
     if isinstance(request, PrintFileRequest):
-        var_name = "%s_CONTENT" % request.name.upper()
+        var_name = f"{request.name.upper()}_CONTENT"
         return [
             MakeStringVar(
                 name = var_name,
@@ -111,14 +109,13 @@ def get_gnumake_rules_helper(request, common_vars, **kwargs):
     if isinstance(request, CopyRequest):
         return [
             MakeRule(
-                name = request.name,
-                dep_literals = [],
-                dep_files = [request.input_file],
-                output_file = request.output_file,
-                cmds = ["cp %s %s" % (
-                    files_to_makefile([request.input_file], common_vars),
-                    files_to_makefile([request.output_file], common_vars))
-                ]
+                name=request.name,
+                dep_literals=[],
+                dep_files=[request.input_file],
+                output_file=request.output_file,
+                cmds=[
+                    f"cp {files_to_makefile([request.input_file], common_vars)} {files_to_makefile([request.output_file], common_vars)}"
+                ],
             )
         ]
 
@@ -130,10 +127,10 @@ def get_gnumake_rules_helper(request, common_vars, **kwargs):
             )
         ]
 
-    if request.tool.name == "make":
-        cmd_template = "$(MAKE) {ARGS}"
-    elif request.tool.name == "gentest":
+    if request.tool.name == "gentest":
         cmd_template = "$(INVOKE) $(GENTEST) {ARGS}"
+    elif request.tool.name == "make":
+        cmd_template = "$(MAKE) {ARGS}"
     else:
         assert isinstance(request.tool, IcuTool)
         cmd_template = "$(INVOKE) $(TOOLBINDIR)/{TOOL} {{ARGS}}".format(
@@ -148,53 +145,49 @@ def get_gnumake_rules_helper(request, common_vars, **kwargs):
             # Special case for multiple output files: Makefile rules should have only one
             # output file apiece. More information:
             # https://www.gnu.org/software/automake/manual/html_node/Multiple-Outputs.html
-            timestamp_var_name = "%s_ALL" % request.name.upper()
-            timestamp_file = TmpFile("%s.timestamp" % request.name)
+            timestamp_var_name = f"{request.name.upper()}_ALL"
+            timestamp_file = TmpFile(f"{request.name}.timestamp")
             rules = [
-                MakeFilesVar(
-                    name = timestamp_var_name,
-                    files = [timestamp_file]
-                ),
+                MakeFilesVar(name=timestamp_var_name, files=[timestamp_file]),
                 MakeRule(
-                    name = "%s_all" % request.name,
-                    dep_literals = [],
-                    dep_files = dep_files,
-                    output_file = timestamp_file,
-                    cmds = [
+                    name=f"{request.name}_all",
+                    dep_literals=[],
+                    dep_files=dep_files,
+                    output_file=timestamp_file,
+                    cmds=[
                         cmd,
                         "echo timestamp > {MAKEFILENAME}".format(
-                            MAKEFILENAME = files_to_makefile([timestamp_file], common_vars)
-                        )
-                    ]
-                )
+                            MAKEFILENAME=files_to_makefile(
+                                [timestamp_file], common_vars
+                            )
+                        ),
+                    ],
+                ),
             ]
             for i, file in enumerate(request.output_files):
                 rules += [
                     MakeRule(
-                        name = "%s_%d" % (request.name, i),
-                        dep_literals = ["$(%s)" % timestamp_var_name],
-                        dep_files = [],
-                        output_file = file,
-                        cmds = []
+                        name="%s_%d" % (request.name, i),
+                        dep_literals=[f"$({timestamp_var_name})"],
+                        dep_files=[],
+                        output_file=file,
+                        cmds=[],
                     )
                 ]
             return rules
 
         elif len(dep_files) > 5:
             # For nicer printing, for long input lists, use a helper variable.
-            dep_var_name = "%s_DEPS" % request.name.upper()
+            dep_var_name = f"{request.name.upper()}_DEPS"
             return [
-                MakeFilesVar(
-                    name = dep_var_name,
-                    files = dep_files
-                ),
+                MakeFilesVar(name=dep_var_name, files=dep_files),
                 MakeRule(
-                    name = request.name,
-                    dep_literals = ["$(%s)" % dep_var_name],
-                    dep_files = [],
-                    output_file = request.output_files[0],
-                    cmds = [cmd]
-                )
+                    name=request.name,
+                    dep_literals=[f"$({dep_var_name})"],
+                    dep_files=[],
+                    output_file=request.output_files[0],
+                    cmds=[cmd],
+                ),
             ]
 
         else:
@@ -213,8 +206,8 @@ def get_gnumake_rules_helper(request, common_vars, **kwargs):
         dep_literals = []
         # To keep from repeating the same dep files many times, make a variable.
         if len(request.common_dep_files) > 0:
-            dep_var_name = "%s_DEPS" % request.name.upper()
-            dep_literals = ["$(%s)" % dep_var_name]
+            dep_var_name = f"{request.name.upper()}_DEPS"
+            dep_literals = [f"$({dep_var_name})"]
             rules += [
                 MakeFilesVar(
                     name = dep_var_name,
@@ -233,11 +226,11 @@ def get_gnumake_rules_helper(request, common_vars, **kwargs):
             )
             rules += [
                 MakeRule(
-                    name = "%s_%s" % (request.name, name_suffix),
-                    dep_literals = dep_literals,
-                    dep_files = specific_dep_files + [input_file],
-                    output_file = output_file,
-                    cmds = [cmd]
+                    name=f"{request.name}_{name_suffix}",
+                    dep_literals=dep_literals,
+                    dep_files=specific_dep_files + [input_file],
+                    output_file=output_file,
+                    cmds=[cmd],
                 )
             ]
         return rules

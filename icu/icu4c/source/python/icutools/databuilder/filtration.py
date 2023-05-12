@@ -27,20 +27,20 @@ class Filter(object):
         else:
             filter_type = "file-stem"
 
-        if filter_type == "file-stem":
+        if filter_type == "exclude":
+            return ExclusionFilter()
+        elif filter_type == "file-stem":
             return FileStemFilter(json_data)
         elif filter_type == "language":
             return LanguageFilter(json_data)
-        elif filter_type == "regex":
-            return RegexFilter(json_data)
-        elif filter_type == "exclude":
-            return ExclusionFilter()
-        elif filter_type == "union":
-            return UnionFilter(json_data, io)
         elif filter_type == "locale":
             return LocaleFilter(json_data, io)
+        elif filter_type == "regex":
+            return RegexFilter(json_data)
+        elif filter_type == "union":
+            return UnionFilter(json_data, io)
         else:
-            print("Error: Unknown filterType option: %s" % filter_type, file=sys.stderr)
+            print(f"Error: Unknown filterType option: {filter_type}", file=sys.stderr)
             return None
 
     def filter(self, request):
@@ -59,9 +59,7 @@ class Filter(object):
     @staticmethod
     def _file_to_subdir(file):
         limit = file.filename.rfind("/")
-        if limit == -1:
-            return None
-        return file.filename[:limit]
+        return None if limit == -1 else file.filename[:limit]
 
     @abstractmethod
     def match(self, file):
@@ -93,7 +91,9 @@ class IncludeExcludeFilter(Filter):
             self.is_includelist = False
             self.excludelist = json_data["excludelist"]
         else:
-            raise AssertionError("Need either includelist or excludelist: %s" % str(json_data))
+            raise AssertionError(
+                f"Need either includelist or excludelist: {str(json_data)}"
+            )
 
     def match(self, file):
         file_stem = self._file_to_file_stem(file)
@@ -135,30 +135,23 @@ class RegexFilter(IncludeExcludeFilter):
 
     def _should_include(self, file_stem):
         if self.is_includelist:
-            for pattern in self.includelist:
-                if pattern.match(file_stem):
-                    return True
-            return False
+            return any(pattern.match(file_stem) for pattern in self.includelist)
         else:
-            for pattern in self.excludelist:
-                if pattern.match(file_stem):
-                    return False
-            return True
+            return not any(pattern.match(file_stem) for pattern in self.excludelist)
 
 
 class UnionFilter(Filter):
     def __init__(self, json_data, io):
         # Collect the sub-filters.
         self.sub_filters = []
-        for filter_json in json_data["unionOf"]:
-            self.sub_filters.append(Filter.create_from_json(filter_json, io))
+        self.sub_filters.extend(
+            Filter.create_from_json(filter_json, io)
+            for filter_json in json_data["unionOf"]
+        )
 
     def match(self, file):
         """Match iff any of the sub-filters match."""
-        for filter in self.sub_filters:
-            if filter.match(file):
-                return True
-        return False
+        return any(filter.match(file) for filter in self.sub_filters)
 
 
 LANGUAGE_SCRIPT_REGEX = re.compile(r"^([a-z]{2,3})_[A-Z][a-z]{3}$")
@@ -229,7 +222,7 @@ class LocaleFilter(Filter):
             return "root"
         i = locale.rfind("_")
         if i < 0:
-            assert locale == "root", "Invalid locale: %s/%s" % (tree, locale)
+            assert locale == "root", f"Invalid locale: {tree}/{locale}"
             return None
         return locale[:i]
 
@@ -262,10 +255,7 @@ def _apply_file_filters(old_requests, config, io):
 
 
 def _preprocess_file_filters(requests, config, io):
-    all_categories = set(
-        request.category
-        for request in requests
-    )
+    all_categories = {request.category for request in requests}
     all_categories.remove(None)
     all_categories = list(sorted(all_categories))
     json_data = config.filters_json_data
@@ -274,7 +264,7 @@ def _preprocess_file_filters(requests, config, io):
     for category in all_categories:
         filter_json = default_filter_json
         # Special default for category "brkitr_lstm" as "exclude" for now.
-        if "brkitr_lstm" == category:
+        if category == "brkitr_lstm":
             filter_json = "exclude"
         # Figure out the correct filter to create for now.
         if "featureFilters" in json_data and category in json_data["featureFilters"]:
@@ -284,14 +274,12 @@ def _preprocess_file_filters(requests, config, io):
         # Resolve the filter JSON into a filter object
         if filter_json == "exclude":
             filters[category] = ExclusionFilter()
-        elif filter_json == "include":
-            pass  # no-op
-        else:
+        elif filter_json != "include":
             filters[category] = Filter.create_from_json(filter_json, io)
     if "featureFilters" in json_data:
         for category in json_data["featureFilters"]:
             if category not in all_categories:
-                print("Warning: category %s is not known" % category, file=sys.stderr)
+                print(f"Warning: category {category} is not known", file=sys.stderr)
     return filters
 
 
@@ -299,7 +287,7 @@ class ResourceFilterInfo(object):
     def __init__(self, category, strategy):
         self.category = category
         self.strategy = strategy
-        self.filter_tmp_dir = "filters/%s" % category
+        self.filter_tmp_dir = f"filters/{category}"
         self.input_files = None
         self.filter_files = None
         self.rules_by_file = None
@@ -319,11 +307,11 @@ class ResourceFilterInfo(object):
             self._set_files(request.input_files)
             request.dep_targets += [self.filter_files[:]]
             arg_str = "--filterDir {TMP_DIR}/%s" % self.filter_tmp_dir
-            request.args = "%s %s" % (arg_str, request.args)
+            request.args = f"{arg_str} {request.args}"
 
         # Make sure we found the target request
         if self.input_files is None:
-            print("WARNING: Category not found: %s" % self.category, file=sys.stderr)
+            print(f"WARNING: Category not found: {self.category}", file=sys.stderr)
             self.input_files = []
             self.filter_files = []
             self.rules_by_file = []
@@ -338,10 +326,9 @@ class ResourceFilterInfo(object):
             return
         self.input_files = list(files)
         self.filter_files = [
-            TmpFile("%s/%s" % (self.filter_tmp_dir, basename))
+            TmpFile(f"{self.filter_tmp_dir}/{basename}")
             for basename in (
-                file.filename[file.filename.rfind("/")+1:]
-                for file in files
+                file.filename[file.filename.rfind("/") + 1 :] for file in files
             )
         ]
         if self.strategy == "additive":
@@ -391,9 +378,7 @@ class ResourceFilterInfo(object):
 
     @staticmethod
     def _generate_resource_filter_txt(rules):
-        result = "# Caution: This file is automatically generated\n\n"
-        result += "\n".join(rules)
-        return result
+        return "# Caution: This file is automatically generated\n\n" + "\n".join(rules)
 
 
 def _apply_resource_filters(all_requests, config, io):

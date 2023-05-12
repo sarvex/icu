@@ -38,7 +38,7 @@ class AbstractRequest(object):
                     value = copy.deepcopy(value)
                 setattr(self, key, value)
             else:
-                raise ValueError("Unknown argument: %s" % key)
+                raise ValueError(f"Unknown argument: {key}")
 
     def apply_file_filter(self, filter):
         """
@@ -143,10 +143,10 @@ class AbstractExecutionRequest(AbstractRequest):
                     self.common_dep_files += request.all_output_files()
                     break
             else:
-                print("Warning: Unable to find target %s, a dependency of %s" % (
-                    dep_target.name,
-                    self.name
-                ), file=sys.stderr)
+                print(
+                    f"Warning: Unable to find target {dep_target.name}, a dependency of {self.name}",
+                    file=sys.stderr,
+                )
         self.dep_targets = []
 
     def all_input_files(self):
@@ -313,21 +313,20 @@ class IndexRequest(AbstractRequest):
         return i + j > 0
 
     def flatten(self, config, all_requests, common_vars):
-        return (
-            PrintFileRequest(
-                name = self.name,
-                output_file = self.txt_file,
-                content = self._generate_index_file(common_vars)
-            ).flatten(config, all_requests, common_vars) +
-            SingleExecutionRequest(
-                name = "%s_res" % self.name,
-                category = self.category,
-                input_files = [self.txt_file],
-                output_files = [self.output_file],
-                tool = IcuTool("genrb"),
-                args = self.args,
-                format_with = self.format_with
-            ).flatten(config, all_requests, common_vars)
+        return PrintFileRequest(
+            name=self.name,
+            output_file=self.txt_file,
+            content=self._generate_index_file(common_vars),
+        ).flatten(config, all_requests, common_vars) + SingleExecutionRequest(
+            name=f"{self.name}_res",
+            category=self.category,
+            input_files=[self.txt_file],
+            output_files=[self.output_file],
+            tool=IcuTool("genrb"),
+            args=self.args,
+            format_with=self.format_with,
+        ).flatten(
+            config, all_requests, common_vars
         )
 
     def _generate_index_file(self, common_vars):
